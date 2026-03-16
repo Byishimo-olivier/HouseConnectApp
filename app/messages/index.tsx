@@ -8,6 +8,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
 import { apiFetch } from '../../utils/api';
 import { useProfile } from '@/context/ProfileContext';
+import { sanitizeProfileImage } from '../../utils/image';
 
 export default function InboxScreen() {
     const router = useRouter();
@@ -27,6 +28,13 @@ export default function InboxScreen() {
             const keys = await getOrCreateKeyPair();
 
             const decryptedConversations = await Promise.all(data.map(async (conv: any) => {
+                // Sanitize participant images
+                if (conv.participants) {
+                    conv.participants.forEach((p: any) => {
+                        p.profileImage = sanitizeProfileImage(p.profileImage);
+                    });
+                }
+
                 if (conv.messages && conv.messages[0]) {
                     const msg = conv.messages[0];
                     const decrypted = await decryptMessage(

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
+import { View, StyleSheet, ViewStyle, StyleProp, Platform } from 'react-native';
 import { Colors, Spacing, BorderRadius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -22,13 +22,18 @@ export function Card({ children, style, variant = 'elevated' }: CardProps) {
         };
 
         if (variant === 'elevated') {
+            const shadowStyle: ViewStyle = Platform.OS === 'web'
+                ? { boxShadow: `0px 2px 8px ${theme.shadow}1a` } as any
+                : {
+                    shadowColor: theme.shadow,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 8,
+                    elevation: 4,
+                };
             return {
                 ...baseStyle,
-                shadowColor: theme.shadow,
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-                elevation: 4,
+                ...shadowStyle,
             };
         } else if (variant === 'outlined') {
             return {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, Keyboard } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeColor } from '@/hooks/use-theme-color';
@@ -18,6 +18,7 @@ export default function ForgotPasswordScreen() {
         }
 
         setLoading(true);
+        Keyboard.dismiss();
         try {
             await apiFetch('/auth/forgot-password', {
                 method: 'POST',

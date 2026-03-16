@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useProfile } from '@/context/ProfileContext';
 import { apiFetch } from '@/utils/api';
 import { useFocusEffect } from '@react-navigation/native';
+import { sanitizeProfileImage } from '@/utils/image';
 
 export default function EmployeeDashboard() {
   const router = useRouter();
@@ -48,8 +49,10 @@ export default function EmployeeDashboard() {
 
           // Also refresh the global unread count
           profileContext.refreshUnreadCount();
-        } catch (error) {
-          console.error('Failed to fetch dashboard data:', error);
+        } catch (error: any) {
+          if (error.message !== 'AUTHENTICATION_REQUIRED') {
+            console.error('Failed to fetch dashboard data:', error);
+          }
         }
       };
       fetchStats();
@@ -90,8 +93,8 @@ export default function EmployeeDashboard() {
           <Text style={[styles.userName, { color: theme.text }]}>{profile?.fullName || 'User'}</Text>
         </View>
         <TouchableOpacity onPress={() => router.push('/employee/profile')}>
-          {profile?.profileImage ? (
-            <Image source={{ uri: profile.profileImage }} style={styles.avatarImage} />
+          {sanitizeProfileImage(profile?.profileImage) ? (
+            <Image source={{ uri: sanitizeProfileImage(profile?.profileImage)! }} style={styles.avatarImage} />
           ) : (
             <View style={[styles.avatarPlaceholder, { backgroundColor: theme.primary }]}>
               <Text style={styles.avatarText}>{getInitials(profile?.fullName || 'User')}</Text>

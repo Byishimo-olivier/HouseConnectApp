@@ -17,7 +17,7 @@ export default function EmployeeProfileScreen() {
     const themeObj = Colors[colorScheme ?? 'light'];
     const { theme, toggleTheme } = useTheme();
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-    const { profile, refreshProfile } = useProfile();
+    const { profile, refreshProfile, logout } = useProfile();
 
     // Refresh profile data every time this screen comes into focus
     useFocusEffect(
@@ -68,8 +68,7 @@ export default function EmployeeProfileScreen() {
     );
 
     const handleLogout = async () => {
-        await AsyncStorage.removeItem('userToken');
-        await AsyncStorage.removeItem('userInfo');
+        await logout();
         router.replace('/auth/login');
     };
 

@@ -10,6 +10,7 @@ import { apiFetch, BACKEND_URL } from '../../utils/api';
 import { useProfile } from '@/context/ProfileContext';
 import { encryptForBoth, decryptMessage, getOrCreateKeyPair, initCrypto } from '../../utils/crypto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { sanitizeProfileImage } from '../../utils/image';
 
 export default function ChatScreen() {
     const { id: recipientId } = useLocalSearchParams();
@@ -40,6 +41,9 @@ export default function ChatScreen() {
             setConversation(conv);
 
             const other = conv.participants.find((p: any) => p.id !== profile?.id);
+            if (other) {
+                other.profileImage = sanitizeProfileImage(other.profileImage);
+            }
             setRecipient(other);
 
             // 2. Fetch & Decrypt Messages
@@ -125,7 +129,7 @@ export default function ChatScreen() {
     }, [recipientId]);
 
     const sendMessage = async () => {
-        if (!inputText.trim() || !socket) return;
+        if (!inputText.trim() || !socket || !profile || !recipient) return;
 
         const originalText = inputText;
         setInputText('');
@@ -136,8 +140,8 @@ export default function ChatScreen() {
             // setMessages(prev => [...prev, { id: tempId, senderId: profile?.id, content: originalText, createdAt: new Date() }]);
 
             // Encrypt for both parties
-            console.log(`[E2EE send] Encrypting with keys - Me (Sender): ${profile.publicKey?.substring(0, 10)}... Recipient: ${recipient.publicKey?.substring(0, 10)}...`);
-            const encryptedData = await encryptForBoth(originalText, recipient.publicKey, profile?.publicKey);
+            console.log(`[E2EE send] Encrypting with keys - Me (Sender): ${profile?.publicKey?.substring(0, 10)}... Recipient: ${recipient?.publicKey?.substring(0, 10)}...`);
+            const encryptedData = await encryptForBoth(originalText, recipient.publicKey, profile.publicKey);
 
             socket.emit('send_message', {
                 conversationId: conversation.id,

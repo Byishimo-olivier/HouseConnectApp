@@ -7,6 +7,7 @@ import {
     Animated,
     Dimensions,
     StatusBar,
+    Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,18 +27,18 @@ export default function WelcomeScreen() {
             Animated.timing(fadeAnim, {
                 toValue: 1,
                 duration: 800,
-                useNativeDriver: true,
+                useNativeDriver: Platform.OS !== 'web',
             }),
             Animated.spring(logoScale, {
                 toValue: 1,
                 friction: 5,
                 tension: 80,
-                useNativeDriver: true,
+                useNativeDriver: Platform.OS !== 'web',
             }),
             Animated.timing(slideAnim, {
                 toValue: 0,
                 duration: 700,
-                useNativeDriver: true,
+                useNativeDriver: Platform.OS !== 'web',
             }),
         ]).start();
     }, []);
@@ -216,11 +217,18 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 6,
+        ...Platform.select({
+            web: {
+                boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.2)',
+            },
+            default: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.2,
+                shadowRadius: 8,
+                elevation: 6,
+            },
+        }),
     },
     primaryButtonText: {
         color: '#1565c0',

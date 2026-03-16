@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image, Keyboard } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { apiFetch } from '../../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useProfile } from '@/context/ProfileContext';
 
 export default function LoginScreen() {
     const router = useRouter();
@@ -13,6 +14,8 @@ export default function LoginScreen() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
 
+    const { refreshProfile } = useProfile();
+
     const handleLogin = async () => {
         if (!email || !password) {
             Alert.alert('Error', 'Please fill in all fields');
@@ -20,6 +23,7 @@ export default function LoginScreen() {
         }
 
         setLoading(true);
+        Keyboard.dismiss();
         try {
             const data = await apiFetch('/auth/login', {
                 method: 'POST',
@@ -29,6 +33,9 @@ export default function LoginScreen() {
             // Save token and user info for authenticated requests
             await AsyncStorage.setItem('userToken', data.token);
             await AsyncStorage.setItem('userInfo', JSON.stringify(data.user));
+
+            // Refresh global profile state before navigating
+            await refreshProfile();
 
             if (data.user.role === 'MAID') {
                 router.replace('/maid');

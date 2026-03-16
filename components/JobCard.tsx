@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useThemeColor } from '@/hooks/use-theme-color';
@@ -24,21 +24,21 @@ export default function JobCard({ job }: JobCardProps) {
   const tint = useThemeColor({}, 'tint');
 
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.card}
       onPress={() => router.push(`/jobs/${job.id}`)}
     >
       <View style={styles.header}>
         <View style={styles.titleContainer}>
-            <Text style={styles.title} numberOfLines={1}>{job.title}</Text>
-            <Text style={styles.location}>
-                <Ionicons name="location-outline" size={14} color="#666" /> {job.location}
-            </Text>
+          <Text style={styles.title} numberOfLines={1}>{job.title}</Text>
+          <Text style={styles.location}>
+            <Ionicons name="location-outline" size={14} color="#666" /> {job.location}
+          </Text>
         </View>
         <View style={[styles.badge, job.status === 'OPEN' ? styles.openBadge : styles.closedBadge]}>
-            <Text style={[styles.badgeText, job.status === 'OPEN' ? styles.openText : styles.closedText]}>
-                {job.status}
-            </Text>
+          <Text style={[styles.badgeText, job.status === 'OPEN' ? styles.openText : styles.closedText]}>
+            {job.status}
+          </Text>
         </View>
       </View>
 
@@ -60,11 +60,18 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+      },
+    }),
     borderWidth: 1,
     borderColor: '#eee',
   },

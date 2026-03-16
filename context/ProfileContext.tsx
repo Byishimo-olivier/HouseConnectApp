@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiFetch } from '../utils/api';
 import { getOrCreateKeyPair } from '../utils/crypto';
+import { sanitizeProfileImage } from '../utils/image';
 
 // Local storage keys
 const GET_LOCAL_IMAGE_KEY = (userId: string | number) => `localProfileImage_${userId}`;
@@ -17,32 +19,35 @@ interface ProfileData {
 }
 
 interface ProfileContextType {
+    isLoading: boolean;
     profile: ProfileData | null;
     unreadCount: number;
     unreadChatCount: number;
     refreshProfile: () => Promise<void>;
     refreshUnreadCount: () => Promise<void>;
     refreshUnreadChatCount: () => Promise<void>;
-    updateLocalProfile: (data: Partial<ProfileData>) => void;
+    updateLocalProfile: (data: Partial<ProfileData>) => Promise<void>;
     logout: () => Promise<void>;
 }
 
 const ProfileContext = createContext<ProfileContextType>({
+    isLoading: true,
     profile: null,
     unreadCount: 0,
     unreadChatCount: 0,
     refreshProfile: async () => { },
     refreshUnreadCount: async () => { },
     refreshUnreadChatCount: async () => { },
-    updateLocalProfile: () => { },
+    updateLocalProfile: async () => { },
     logout: async () => { },
 });
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
+    const [isLoading, setIsLoading] = useState(true);
     const [profile, setProfile] = useState<ProfileData | null>(null);
     const [unreadCount, setUnreadCount] = useState(0);
     const [unreadChatCount, setUnreadChatCount] = useState(0);
-    const [isRegisteringKey, setIsRegisteringKey] = useState(false);
+    const isRegisteringKey = React.useRef(false);
 
     const refreshUnreadCount = useCallback(async () => {
         try {
@@ -62,8 +67,25 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         }
     }, []);
 
+    const logout = useCallback(async () => {
+        const userId = profile?.id;
+        const keys = ['userToken', 'userInfo', 'userRole'];
+        if (userId) keys.push(GET_LOCAL_IMAGE_KEY(userId));
+
+        console.log('Logging out, clearing keys:', keys);
+        await AsyncStorage.multiRemove(keys);
+        setProfile(null);
+    }, [profile?.id]);
+
     const refreshProfile = useCallback(async () => {
+        setIsLoading(true);
         try {
+            const token = await AsyncStorage.getItem('userToken');
+            if (!token) {
+                setProfile(null);
+                return;
+            }
+
             const data = await apiFetch('/profile/me');
             const userId = data.id;
 
@@ -72,29 +94,32 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
 
             const profileData = {
                 ...data,
-                profileImage: localImage || data.profileImage || null,
+                profileImage: sanitizeProfileImage(localImage || data.profileImage || null),
             };
 
             setProfile(profileData);
 
             // E2EE Key Registration
-            if (userId && !isRegisteringKey) {
+            if (userId && !isRegisteringKey.current) {
                 const keys = await getOrCreateKeyPair();
-                // Enhanced logging to see the actual keys
-                console.log(`[E2EE Sync] Me: ${userId} | Server Key: ${data.publicKey?.substring(0, 10)}... | Local Key: ${keys.publicKey.substring(0, 10)}...`);
 
+                // Only register if server doesn't have our key OR it's different
                 if (data.publicKey !== keys.publicKey) {
-                    setIsRegisteringKey(true);
+                    isRegisteringKey.current = true;
                     console.log('Registering new public key for E2EE...');
-                    await apiFetch('/chat/public-key', {
-                        method: 'POST',
-                        body: JSON.stringify({ publicKey: keys.publicKey })
-                    }).then(() => {
-                        console.log('[E2EE Sync] Registration Successful. Updating local Profile state.');
+                    try {
+                        await apiFetch('/chat/public-key', {
+                            method: 'POST',
+                            body: JSON.stringify({ publicKey: keys.publicKey })
+                        });
+                        console.log('[E2EE Sync] Registration Successful.');
+                        // Update local state ONLY - don't trigger refreshProfile again to avoid loops
                         setProfile(prev => prev ? { ...prev, publicKey: keys.publicKey } : null);
-                    }).catch(err => {
+                    } catch (err) {
                         console.error('[E2EE Sync] Registration Failed:', err);
-                    }).finally(() => setIsRegisteringKey(false));
+                    } finally {
+                        isRegisteringKey.current = false;
+                    }
                 } else {
                     console.log('[E2EE Sync] Keys are in sync.');
                 }
@@ -103,33 +128,42 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
             // Also refresh unread counts on profile refresh
             refreshUnreadCount();
             refreshUnreadChatCount();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Refresh Profile Error:', error);
+            if (error?.message === 'Invalid or expired token' || error?.message === 'Access token required') {
+                console.log('Session invalid. Logging out...');
+                logout();
+            }
+        } finally {
+            setIsLoading(false);
         }
-    }, [refreshUnreadCount, refreshUnreadChatCount]);
+    }, [refreshUnreadCount, refreshUnreadChatCount, logout]);
 
     const updateLocalProfile = useCallback(async (data: Partial<ProfileData>) => {
         const userId = profile?.id;
 
+        // Sanitize the incoming profileImage data
+        const profileImage = data.profileImage !== undefined ? sanitizeProfileImage(data.profileImage) : undefined;
+
         // If a new profileImage (local URI) is provided, persist it to AsyncStorage
-        if (data.profileImage !== undefined && userId) {
+        if (profileImage !== undefined && userId) {
             const key = GET_LOCAL_IMAGE_KEY(userId);
-            if (data.profileImage) {
-                await AsyncStorage.setItem(key, data.profileImage);
+            if (profileImage) {
+                await AsyncStorage.setItem(key, profileImage);
             } else {
                 await AsyncStorage.removeItem(key);
             }
         }
-        setProfile(prev => prev ? { ...prev, ...data } : null);
-    }, [profile?.id]);
 
-    const logout = useCallback(async () => {
-        const userId = profile?.id;
-        const keys = ['userToken', 'userInfo'];
-        if (userId) keys.push(GET_LOCAL_IMAGE_KEY(userId));
-
-        await AsyncStorage.multiRemove(keys);
-        setProfile(null);
+        setProfile(prev => {
+            if (!prev) return null;
+            const { profileImage: _unused, ...rest } = data;
+            const updated = { ...prev, ...rest } as ProfileData;
+            if (profileImage !== undefined) {
+                updated.profileImage = profileImage;
+            }
+            return updated;
+        });
     }, [profile?.id]);
 
     useEffect(() => {
@@ -137,7 +171,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     return (
-        <ProfileContext.Provider value={{ profile, unreadCount, unreadChatCount, refreshProfile, refreshUnreadCount, refreshUnreadChatCount, updateLocalProfile, logout }}>
+        <ProfileContext.Provider value={{ isLoading, profile, unreadCount, unreadChatCount, refreshProfile, refreshUnreadCount, refreshUnreadChatCount, updateLocalProfile, logout }}>
             {children}
         </ProfileContext.Provider>
     );

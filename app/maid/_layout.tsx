@@ -128,6 +128,7 @@ export default function MaidLayout() {
       />
 
       {/* Hidden from Tab Bar */}
+      <Tabs.Screen name="dashboard" options={{ href: null }} />
       <Tabs.Screen name="messages" options={{ href: null, headerRight: () => null }} />
       <Tabs.Screen name="disputes" options={{ href: null, title: 'My Disputes' }} />
     </Tabs>

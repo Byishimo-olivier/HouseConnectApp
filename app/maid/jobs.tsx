@@ -14,6 +14,7 @@ export default function MaidJobsScreen() {
   const theme = Colors[colorScheme ?? 'light'];
   const [search, setSearch] = React.useState('');
   const [jobs, setJobs] = useState<any[]>([]);
+  const [appliedJobIds, setAppliedJobIds] = useState<Set<number>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -26,10 +27,21 @@ export default function MaidJobsScreen() {
   const fetchJobs = async () => {
     setIsLoading(true);
     try {
-      const data = await apiFetch('/jobs');
-      setJobs(Array.isArray(data) ? data : []);
+      // Fetch both jobs and my applications
+      const [jobsData, appsData] = await Promise.all([
+        apiFetch('/jobs'),
+        apiFetch('/jobs/maid/applications')
+      ]);
+
+      setJobs(Array.isArray(jobsData) ? jobsData : []);
+
+      // Extract IDs of jobs already applied for
+      if (Array.isArray(appsData)) {
+        const ids = new Set(appsData.map((app: any) => app.jobId));
+        setAppliedJobIds(ids);
+      }
     } catch (error) {
-      console.error('Failed to fetch jobs:', error);
+      console.error('Failed to fetch jobs or applications:', error);
     } finally {
       setIsLoading(false);
     }
@@ -41,7 +53,12 @@ export default function MaidJobsScreen() {
     setRefreshing(false);
   }, []);
 
-  const handleApply = (jobId: string | number) => {
+  const handleApply = (jobId: number) => {
+    if (appliedJobIds.has(jobId)) {
+      Alert.alert('Info', 'You have already applied for this job.');
+      return;
+    }
+
     Alert.alert('Apply', 'Are you sure you want to apply for this job?', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -53,6 +70,8 @@ export default function MaidJobsScreen() {
               body: JSON.stringify({ coverLetter: 'I am interested in this job.' })
             });
             Alert.alert('Success', 'Application submitted successfully!');
+            // Update local state to show as applied without full refresh
+            setAppliedJobIds(prev => new Set([...prev, jobId]));
           } catch (error: any) {
             Alert.alert('Error', error.message || 'Failed to apply.');
           }
@@ -97,10 +116,19 @@ export default function MaidJobsScreen() {
       </View>
 
       <TouchableOpacity
-        style={[styles.applyButton, { backgroundColor: theme.primary }]}
+        style={[
+          styles.applyButton,
+          { backgroundColor: appliedJobIds.has(item.id) ? theme.border : theme.primary }
+        ]}
         onPress={() => handleApply(item.id)}
+        disabled={appliedJobIds.has(item.id)}
       >
-        <Text style={styles.applyButtonText}>Apply Now</Text>
+        <Text style={[
+          styles.applyButtonText,
+          { color: appliedJobIds.has(item.id) ? theme.textSecondary : '#fff' }
+        ]}>
+          {appliedJobIds.has(item.id) ? 'Already Applied' : 'Apply Now'}
+        </Text>
       </TouchableOpacity>
     </Card>
   );

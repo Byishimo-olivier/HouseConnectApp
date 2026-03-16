@@ -10,6 +10,7 @@ import { useProfile } from '@/context/ProfileContext';
 import { apiFetch } from '@/utils/api';
 import { useFocusEffect } from '@react-navigation/native';
 import { Colors } from '@/constants/theme';
+import { sanitizeProfileImage } from '@/utils/image';
 
 // Mock Data removed for database fetch
 
@@ -31,8 +32,10 @@ export default function MaidDashboardDetail() {
     try {
       const data = await apiFetch('/jobs');
       setJobs(Array.isArray(data) ? data.slice(0, 3) : []);
-    } catch (error) {
-      console.error('Failed to fetch dashboard jobs:', error);
+    } catch (error: any) {
+      if (error.message !== 'AUTHENTICATION_REQUIRED') {
+        console.error('Failed to fetch dashboard jobs:', error);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -55,9 +58,9 @@ export default function MaidDashboardDetail() {
           style={styles.profileBtn}
           onPress={() => router.push('/maid/profile')}
         >
-          {profile?.profileImage ? (
+          {sanitizeProfileImage(profile?.profileImage) ? (
             <Image
-              source={{ uri: profile.profileImage }}
+              source={{ uri: sanitizeProfileImage(profile?.profileImage)! }}
               style={styles.avatar}
             />
           ) : (

@@ -1,11 +1,12 @@
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
+import { useEffect } from 'react';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ThemeProvider } from '@/context/ThemeContext';
-import { ProfileProvider } from '@/context/ProfileContext';
+import { ProfileProvider, useProfile } from '@/context/ProfileContext';
 
 export const unstable_settings = {
   anchor: 'index',
@@ -13,6 +14,27 @@ export const unstable_settings = {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
+  const { profile, isLoading } = useProfile();
+  const router = useRouter();
+  const segments = useSegments();
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === 'auth';
+
+    if (!profile && !inAuthGroup) {
+      // User is not logged in and not in auth group, redirect to welcome
+      router.replace('/auth/welcome');
+    } else if (profile && inAuthGroup) {
+      // User is logged in and in auth group, redirect to their respective dashboard
+      if (profile.role === 'MAID') {
+        router.replace('/maid');
+      } else {
+        router.replace('/employee');
+      }
+    }
+  }, [profile, isLoading, segments]);
 
   return (
     <NavigationThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>

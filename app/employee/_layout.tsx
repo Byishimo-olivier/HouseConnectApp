@@ -120,19 +120,21 @@ export default function EmployeeLayout() {
         />
 
         {/* Hiding these from the Tab Bar */}
+        <Tabs.Screen name="find-maids" options={{ href: null }} />
+        <Tabs.Screen name="maid-profile/[id]" options={{ href: null }} />
         <Tabs.Screen name="post-job" options={{ href: null }} />
         <Tabs.Screen name="messages" options={{ href: null, headerRight: () => null }} />
         <Tabs.Screen name="disputes" options={{ href: null, title: 'My Disputes' }} />
       </Tabs>
 
       {/* Floating Action Button - Post Job */}
-      <TouchableOpacity
+      {/* <TouchableOpacity
         style={[styles.fab, { backgroundColor: theme.primary, shadowColor: theme.shadow }]}
         onPress={() => router.push('/employee/post-job')}
         activeOpacity={0.9}
       >
         <Ionicons name="add" size={32} color="#fff" />
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   );
 }
