@@ -99,14 +99,14 @@ export default function MaidProfileScreen() {
                     title="Edit Profile"
                     variant="outline"
                     size="sm"
-                    onPress={() => router.push('/profile/personal-info')}
+                    onPress={() => router.push('/personal profile')}
                     style={styles.editButton}
                 />
             </View>
 
             <Section title="Professional Profile">
                 <SettingItem icon="ribbon-outline" label="Experience" value={`${profile.yearsExperience || 0} Years`} highlight />
-                <SettingItem icon="calendar-outline" label="Availability" value={profile.availabilityType || 'Not Set'} onPress={() => router.push('/profile/personal-info')} />
+                <SettingItem icon="calendar-outline" label="Availability" value={profile.availabilityType || 'Not Set'} onPress={() => router.push('/personal profile')} />
                 <SettingItem icon="cash-outline" label="Expected Salary" value={profile.expectedSalary ? `${profile.expectedSalary.toLocaleString()} RWF` : 'Not Set'} highlight />
                 <SettingItem icon="location-outline" label="Current City" value={profile.address || 'Not Set'} />
             </Section>
@@ -118,7 +118,7 @@ export default function MaidProfileScreen() {
             </Section>
 
             <Section title="Account Settings">
-                <SettingItem icon="person-outline" label="Personal Details" onPress={() => router.push('/profile/personal-info')} />
+                <SettingItem icon="person-outline" label="Personal Details" onPress={() => router.push('/')} />
                 <SettingItem icon="notifications-outline" label="Notifications" onPress={() => { }} />
             </Section>
 

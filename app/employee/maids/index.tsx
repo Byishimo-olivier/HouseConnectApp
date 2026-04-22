@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
-import { apiFetch } from '../../utils/api';
+import { apiFetch } from '@/utils/api';
 
 const WORK_TYPES = ['Cleaning', 'Cooking', 'Babysitting', 'Elderly Care', 'Gardening'];
 
@@ -41,7 +41,7 @@ export default function FindMaidsScreen() {
     }, [search, selectedType]);
 
     const renderMaid = ({ item }: { item: any }) => (
-        <TouchableOpacity onPress={() => router.push(`/employee/maid-profile/${item.id}`)}>
+        <TouchableOpacity onPress={() => router.push(`/employee/maids/${item.id}`)}>
             <Card style={styles.maidCard}>
                 <View style={styles.maidInfo}>
                     <View style={[styles.avatar, { backgroundColor: theme.primary + '20' }]}>

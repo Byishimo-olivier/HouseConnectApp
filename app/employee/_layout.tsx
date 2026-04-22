@@ -120,17 +120,40 @@ export default function EmployeeLayout() {
         />
 
         {/* Hiding these from the Tab Bar */}
-        <Tabs.Screen name="find-maids" options={{ href: null }} />
-        <Tabs.Screen name="maid-profile/[id]" options={{ href: null }} />
-        <Tabs.Screen name="post-job" options={{ href: null }} />
+        <Tabs.Screen
+          name="maids/index"
+          options={{
+            href: null,
+            title: 'Find Maids',
+            headerTitle: 'Find Maids',
+          }}
+        />
+        <Tabs.Screen
+          name="maids/[id]"
+          options={{
+            href: null,
+            title: 'Maid Profile',
+            headerTitle: 'Maid Profile',
+          }}
+        />
+        <Tabs.Screen
+          name="assistant"
+          options={{
+            href: null,
+            title: 'Assistant',
+            headerTitle: 'Assistant',
+          }}
+        />
+        <Tabs.Screen name="jobs/new" options={{ href: null, title: 'Post Job' }} />
         <Tabs.Screen name="messages" options={{ href: null, headerRight: () => null }} />
         <Tabs.Screen name="disputes" options={{ href: null, title: 'My Disputes' }} />
+        <Tabs.Screen name="activity-details" options={{ href: null, title: 'Activity Details' }} />
       </Tabs>
 
       {/* Floating Action Button - Post Job */}
       {/* <TouchableOpacity
         style={[styles.fab, { backgroundColor: theme.primary, shadowColor: theme.shadow }]}
-        onPress={() => router.push('/employee/post-job')}
+        onPress={() => router.push('/employee/jobs/new')}
         activeOpacity={0.9}
       >
         <Ionicons name="add" size={32} color="#fff" />

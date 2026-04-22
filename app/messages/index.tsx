@@ -75,8 +75,8 @@ export default function InboxScreen() {
         return (
             <TouchableOpacity
                 onPress={() => router.push({
-                    pathname: '/messages/[id]' as any,
-                    params: { id: otherParticipant.id.toString() }
+                    pathname: '/message' as any,
+                    params: { id: otherParticipant.id.toString(), username: otherParticipant.fullName }
                 })}
                 activeOpacity={0.7}
             >

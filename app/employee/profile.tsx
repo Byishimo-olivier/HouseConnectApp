@@ -103,13 +103,13 @@ export default function EmployeeProfileScreen() {
                     title="Edit Profile"
                     variant="outline"
                     size="sm"
-                    onPress={() => router.push('/profile/personal-info')}
+                    onPress={() => router.push('/personal profile')}
                     style={styles.editButton}
                 />
             </View>
 
             <Section title="Account Settings">
-                <SettingItem icon="person-outline" label="Personal Information" onPress={() => router.push('/profile/personal-info')} />
+                <SettingItem icon="person-outline" label="Personal Information" onPress={() => router.push('/personal profile')} />
                 <SettingItem icon="notifications-outline" label="Notifications" value={notificationsEnabled} onPress={() => setNotificationsEnabled(!notificationsEnabled)} isSwitch />
                 <SettingItem icon="moon-outline" label="Dark Mode" value={theme === 'dark'} onPress={toggleTheme} isSwitch />
             </Section>

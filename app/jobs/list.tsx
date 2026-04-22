@@ -130,7 +130,7 @@ export default function JobsListScreen() {
                 </View>
                 <TouchableOpacity
                     style={[styles.addButton, { backgroundColor: theme.primary }]}
-                    onPress={() => router.push('/employee/post-job')}
+                    onPress={() => router.push('/employee/jobs/new')}
                 >
                     <Ionicons name="add" size={24} color="#fff" />
                 </TouchableOpacity>
@@ -183,7 +183,7 @@ export default function JobsListScreen() {
                             {activeTab === 'ALL' && (
                                 <Button
                                     title="Post Your First Job"
-                                    onPress={() => router.push('/employee/post-job')}
+                                    onPress={() => router.push('/employee/jobs/new')}
                                     style={styles.emptyButton}
                                 />
                             )}

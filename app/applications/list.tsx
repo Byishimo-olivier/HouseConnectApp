@@ -17,6 +17,14 @@ export default function ApplicationsListScreen() {
     const [applicants, setApplicants] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(false);
 
+    const statusMapping = {
+        PENDING: 'Applied',
+        INTERVIEW: 'Interview',
+        ACCEPTED: 'Hired',
+        REJECTED: 'Rejected',
+        WITHDRAWN: 'Withdrawn'
+    };
+
     useFocusEffect(
         React.useCallback(() => {
             fetchApplicants();
@@ -49,7 +57,7 @@ export default function ApplicationsListScreen() {
                         </View>
                     </View>
                     <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status, theme) + '20' }]}>
-                        <Text style={[styles.statusText, { color: getStatusColor(item.status, theme) }]}>{item.status}</Text>
+                        <Text style={[styles.statusText, { color: getStatusColor(item.status, theme) }]}>{statusMapping[item.status as keyof typeof statusMapping] || item.status}</Text>
                     </View>
                 </View>
                 <Text style={[styles.date, { color: theme.textSecondary }]}>
@@ -61,10 +69,10 @@ export default function ApplicationsListScreen() {
 
     const getStatusColor = (status: string, theme: any) => {
         switch (status) {
-            case 'Applied': return theme.primary;
-            case 'Interview': return theme.warning;
-            case 'Rejected': return theme.danger;
-            case 'Hired': return theme.success;
+            case 'PENDING': return theme.primary;
+            case 'INTERVIEW': return theme.warning;
+            case 'REJECTED': return theme.danger;
+            case 'ACCEPTED': return theme.success;
             default: return theme.textSecondary;
         }
     };

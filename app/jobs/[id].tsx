@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, StyleSheet, Text, ScrollView, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, Text, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
 import { Card } from '@/components/ui/Card';
@@ -7,26 +7,47 @@ import { Button } from '@/components/ui/Button';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
+import { apiFetch } from '@/utils/api';
 
 export default function JobDetailScreen() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'light'];
+    const [job, setJob] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
-    // Mock data based on ID (in real app, fetch from API)
-    const job = {
-        id: id,
-        title: 'Deep House Cleaning',
-        status: 'Active',
-        postedDate: '2 hours ago',
-        description: 'Need a thorough deep cleaning for a 3 bedroom, 2 bath house. Focus on kitchen and bathrooms. Must bring own supplies.',
-        pay: '$120 - Fixed Price',
-        location: 'Downtown Springfield',
-        schedule: 'Tomorrow, 10:00 AM',
-        requirements: ['Own Supplies', 'Eco-friendly products', 'Background check'],
-        applicantsCount: 5
+    useEffect(() => {
+        fetchJobDetails();
+    }, [id]);
+
+    const fetchJobDetails = async () => {
+        try {
+            const data = await apiFetch(`/jobs/${id}`);
+            setJob(data);
+        } catch (error) {
+            console.error('Failed to fetch job details:', error);
+            Alert.alert('Error', 'Failed to load job details');
+        } finally {
+            setIsLoading(false);
+        }
     };
+
+    if (isLoading) {
+        return (
+            <ScreenWrapper style={styles.container}>
+                <ActivityIndicator size="large" color={String(theme.primary || '#2563EB')} />
+            </ScreenWrapper>
+        );
+    }
+
+    if (!job) {
+        return (
+            <ScreenWrapper style={styles.container}>
+                <Text style={{ color: theme.textSecondary }}>Job not found</Text>
+            </ScreenWrapper>
+        );
+    }
 
     const handleDelete = () => {
         Alert.alert(
@@ -39,45 +60,58 @@ export default function JobDetailScreen() {
         );
     };
 
+    const formatDate = (dateStr: string) => {
+        const date = new Date(dateStr);
+        const diff = Date.now() - date.getTime();
+        const minutes = Math.floor(diff / 60000);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+
+        if (days > 0) return `${days}d ago`;
+        if (hours > 0) return `${hours}h ago`;
+        if (minutes > 0) return `${minutes}m ago`;
+        return 'Just now';
+    };
+
     return (
         <ScreenWrapper scrollable style={styles.container}>
             <View style={styles.header}>
                 <Text style={[styles.title, { color: theme.text }]}>{job.title}</Text>
                 <View style={[styles.statusBadge, { backgroundColor: theme.primary + '20' }]}>
-                    <Text style={[styles.statusText, { color: theme.primary }]}>{job.status}</Text>
+                    <Text style={[styles.statusText, { color: theme.primary }]}>{job.status || 'Active'}</Text>
                 </View>
             </View>
 
-            <Text style={[styles.date, { color: theme.textSecondary }]}>Posted {job.postedDate}</Text>
+            <Text style={[styles.date, { color: theme.textSecondary }]}>Posted {formatDate(job.createdAt)}</Text>
 
             <View style={styles.statsContainer}>
                 <Card style={[styles.statsCard, { backgroundColor: theme.card }]}>
-                    <Text style={[styles.statValue, { color: theme.primary }]}>{job.applicantsCount}</Text>
+                    <Text style={[styles.statValue, { color: theme.primary }]}>{job.applicationsCount || 0}</Text>
                     <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Applicants</Text>
                 </Card>
                 <Card style={[styles.statsCard, { backgroundColor: theme.card }]}>
-                    <Text style={[styles.statValue, { color: theme.text }]}>24</Text>
+                    <Text style={[styles.statValue, { color: theme.text }]}>{job.viewCount || 0}</Text>
                     <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Views</Text>
                 </Card>
             </View>
 
             <Card style={styles.detailsCard}>
                 <Text style={[styles.sectionTitle, { color: theme.text }]}>Description</Text>
-                <Text style={[styles.description, { color: theme.textSecondary }]}>{job.description}</Text>
+                <Text style={[styles.description, { color: theme.textSecondary }]}>{job.description || 'No description provided'}</Text>
 
                 <View style={styles.divider} />
 
                 <View style={styles.detailRow}>
                     <Ionicons name="cash-outline" size={20} color={theme.text} />
-                    <Text style={[styles.detailText, { color: theme.text }]}>{job.pay}</Text>
+                    <Text style={[styles.detailText, { color: theme.text }]}>${job.budgetMin || 0} - ${job.budgetMax || 0}</Text>
                 </View>
                 <View style={styles.detailRow}>
                     <Ionicons name="calendar-outline" size={20} color={theme.text} />
-                    <Text style={[styles.detailText, { color: theme.text }]}>{job.schedule}</Text>
+                    <Text style={[styles.detailText, { color: theme.text }]}>{new Date(job.scheduledDate || Date.now()).toLocaleDateString()}</Text>
                 </View>
                 <View style={styles.detailRow}>
                     <Ionicons name="location-outline" size={20} color={theme.text} />
-                    <Text style={[styles.detailText, { color: theme.text }]}>{job.location}</Text>
+                    <Text style={[styles.detailText, { color: theme.text }]}>{job.location || 'Location not specified'}</Text>
                 </View>
             </Card>
 

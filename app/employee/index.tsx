@@ -3,10 +3,11 @@ import { View, StyleSheet, Text, Image, ScrollView, TouchableOpacity } from 'rea
 import { useRouter } from 'expo-router';
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
 import { Card } from '@/components/ui/Card';
-import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
+import { Colors, Spacing, FontSize } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
 import { useProfile } from '@/context/ProfileContext';
+import { AssistantLauncherButton } from '@/components/assistant/AssistantLauncherButton';
 import { apiFetch } from '@/utils/api';
 import { useFocusEffect } from '@react-navigation/native';
 import { sanitizeProfileImage } from '@/utils/image';
@@ -92,15 +93,18 @@ export default function EmployeeDashboard() {
           <Text style={[styles.greeting, { color: theme.textSecondary }]}>{getGreeting()}</Text>
           <Text style={[styles.userName, { color: theme.text }]}>{profile?.fullName || 'User'}</Text>
         </View>
-        <TouchableOpacity onPress={() => router.push('/employee/profile')}>
-          {sanitizeProfileImage(profile?.profileImage) ? (
-            <Image source={{ uri: sanitizeProfileImage(profile?.profileImage)! }} style={styles.avatarImage} />
-          ) : (
-            <View style={[styles.avatarPlaceholder, { backgroundColor: theme.primary }]}>
-              <Text style={styles.avatarText}>{getInitials(profile?.fullName || 'User')}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <AssistantLauncherButton onPress={() => router.push('/employee/assistant')} />
+          <TouchableOpacity onPress={() => router.push('/employee/profile')}>
+            {sanitizeProfileImage(profile?.profileImage) ? (
+              <Image source={{ uri: sanitizeProfileImage(profile?.profileImage)! }} style={styles.avatarImage} />
+            ) : (
+              <View style={[styles.avatarPlaceholder, { backgroundColor: theme.primary }]}>
+                <Text style={styles.avatarText}>{getInitials(profile?.fullName || 'User')}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Stats Cards */}
@@ -133,15 +137,15 @@ export default function EmployeeDashboard() {
       {/* Quick Actions */}
       <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Actions</Text>
       <View style={styles.quickActions}>
-        <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/employee/find-maids')}>
-          <View style={[styles.actionIcon, { backgroundColor: theme.background, borderColor: theme.border, borderWidth: 1 }]}>
+        <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/employee/maids')}>
+          <View style={[styles.actionIcon, { backgroundColor: theme.background, borderColor: theme.border, borderWidth: 1 }]}> 
             <Ionicons name="search" size={24} color={theme.primary} />
           </View>
           <Text style={[styles.actionText, { color: theme.text }]}>Find Maids</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/employee/post-job')}>
-          <View style={[styles.actionIcon, { backgroundColor: theme.background, borderColor: theme.border, borderWidth: 1 }]}>
+        <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/employee/jobs/new')}>
+          <View style={[styles.actionIcon, { backgroundColor: theme.background, borderColor: theme.border, borderWidth: 1 }]}> 
             <Ionicons name="add" size={24} color={theme.primary} />
           </View>
           <Text style={[styles.actionText, { color: theme.text }]}>Post Job</Text>
@@ -174,18 +178,23 @@ export default function EmployeeDashboard() {
       <View style={styles.activityList}>
         {activities.length > 0 ? (
           activities.map((item) => (
-            <Card key={item.id} style={styles.activityCard}>
-              <View style={[styles.activityIcon, { backgroundColor: theme.background }]}>
-                <Ionicons name={item.icon as any} size={20} color={theme.primary} />
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={[styles.activityTitle, { color: theme.text }]} numberOfLines={1}>{item.title}</Text>
-                <Text style={[styles.activityDate, { color: theme.textSecondary }]}>{formatDistanceToNow(item.date)}</Text>
-              </View>
-              <View style={[styles.statusBadge, { backgroundColor: theme.background }]}>
-                <Text style={[styles.statusText, { color: theme.primary, fontSize: 10 }]}>{item.status}</Text>
-              </View>
-            </Card>
+            <TouchableOpacity key={item.id} onPress={() => router.push({
+              pathname: '/employee/activity-details',
+              params: { activity: JSON.stringify(item) }
+            })}>
+              <Card style={styles.activityCard}>
+                <View style={[styles.activityIcon, { backgroundColor: theme.background }]}>
+                  <Ionicons name={item.icon as any} size={20} color={theme.primary} />
+                </View>
+                <View style={styles.activityContent}>
+                  <Text style={[styles.activityTitle, { color: theme.text }]} numberOfLines={1}>{item.title}</Text>
+                  <Text style={[styles.activityDate, { color: theme.textSecondary }]}>{formatDistanceToNow(item.date)}</Text>
+                </View>
+                <View style={[styles.statusBadge, { backgroundColor: theme.background }]}>
+                  <Text style={[styles.statusText, { color: theme.primary, fontSize: 10 }]}>{item.status}</Text>
+                </View>
+              </Card>
+            </TouchableOpacity>
           ))
         ) : (
           <Text style={{ textAlign: 'center', color: theme.textSecondary, marginTop: 10 }}>No recent activity</Text>
@@ -205,6 +214,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: Spacing.lg,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   greeting: {
     fontSize: FontSize.md,

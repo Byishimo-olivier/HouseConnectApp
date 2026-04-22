@@ -30,7 +30,17 @@ function RootLayoutNav() {
       // User is logged in and in auth group, redirect to their respective dashboard
       if (profile.role === 'MAID') {
         router.replace('/maid');
+      } else if (profile.role === 'ADMIN') {
+        router.replace('/admin');
       } else {
+        router.replace('/employee');
+      }
+    } else if (profile && !inAuthGroup) {
+      if (profile.role === 'ADMIN' && segments[0] !== 'admin') {
+        router.replace('/admin');
+      } else if (profile.role === 'MAID' && segments[0] === 'employee') {
+        router.replace('/maid');
+      } else if (profile.role === 'EMPLOYER' && segments[0] === 'maid') {
         router.replace('/employee');
       }
     }
@@ -43,6 +53,9 @@ function RootLayoutNav() {
         <Stack.Screen name="auth" options={{ headerShown: false }} />
         <Stack.Screen name="employee" options={{ headerShown: false }} />
         <Stack.Screen name="maid" options={{ headerShown: false }} />
+        <Stack.Screen name="admin" options={{ headerShown: false }} />
+        <Stack.Screen name="personal-info" options={{ title: 'Edit Profile', headerBackTitle: 'Back' }} />
+        <Stack.Screen name="message" options={{ title: 'Message' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         <Stack.Screen name="jobs/list" options={{ title: 'My Jobs', headerBackTitle: 'Back' }} />
         <Stack.Screen name="jobs/[id]" options={{ title: 'Job Details', headerBackTitle: 'Jobs' }} />

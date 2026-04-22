@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Text, ScrollView, TouchableOpacity, Image, Switch } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, Image, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
 import { Card } from '@/components/ui/Card';
@@ -7,6 +7,7 @@ import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
 import { useProfile } from '@/context/ProfileContext';
+import { AssistantLauncherButton } from '@/components/assistant/AssistantLauncherButton';
 import { apiFetch } from '@/utils/api';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -16,20 +17,17 @@ export default function MaidHomeScreen() {
   const theme = Colors[colorScheme ?? 'light'];
   const profileContext = useProfile();
   const profile = profileContext?.profile;
-  const updateLocalProfile = profileContext?.updateLocalProfile;
   const [isOnline, setIsOnline] = React.useState(true);
   const [jobs, setJobs] = React.useState<any[]>([]);
   const [activities, setActivities] = React.useState<any[]>([]);
   const [stats, setStats] = React.useState({ rating: '0.0', jobsDone: 0, earned: 0 });
-  const [isLoading, setIsLoading] = React.useState(false);
 
   const getInitials = (name: string) => {
     if (!name) return '?';
     return name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
-  const fetchDashboardData = async () => {
-    setIsLoading(true);
+  const fetchDashboardData = React.useCallback(async () => {
     try {
       const [jobsData, activityResponse] = await Promise.all([
         apiFetch('/jobs'),
@@ -46,15 +44,13 @@ export default function MaidHomeScreen() {
       profileContext.refreshUnreadCount();
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
-    } finally {
-      setIsLoading(false);
     }
-  };
+  }, [profileContext]);
 
   useFocusEffect(
     React.useCallback(() => {
       fetchDashboardData();
-    }, [])
+    }, [fetchDashboardData])
   );
 
   const formatDistanceToNow = (date: any) => {
@@ -77,15 +73,18 @@ export default function MaidHomeScreen() {
           <Text style={[styles.greeting, { color: theme.textSecondary }]}>Hello,</Text>
           <Text style={[styles.userName, { color: theme.text }]}>{profile?.fullName || 'User'}</Text>
         </View>
-        <TouchableOpacity onPress={() => router.push('/maid/profile')}>
-          {profile?.profileImage ? (
-            <Image source={{ uri: profile.profileImage }} style={styles.avatarImage} />
-          ) : (
-            <View style={[styles.avatarPlaceholder, { backgroundColor: theme.primary }]}>
-              <Text style={styles.avatarText}>{getInitials(profile?.fullName || 'User')}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <AssistantLauncherButton onPress={() => router.push('/maid/assistant')} />
+          <TouchableOpacity onPress={() => router.push('/maid/profile')}>
+            {profile?.profileImage ? (
+              <Image source={{ uri: profile.profileImage }} style={styles.avatarImage} />
+            ) : (
+              <View style={[styles.avatarPlaceholder, { backgroundColor: theme.primary }]}>
+                <Text style={styles.avatarText}>{getInitials(profile?.fullName || 'User')}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Availability Toggle Card */}
@@ -202,6 +201,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: Spacing.lg,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   greeting: {
     fontSize: FontSize.md,

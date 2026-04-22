@@ -37,7 +37,10 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Something went wrong');
+        const message = errorData?.debug
+            ? `${errorData.message || 'Something went wrong'}: ${errorData.debug}`
+            : (errorData?.message || 'Something went wrong');
+        throw new Error(message);
     }
 
     return response.json();

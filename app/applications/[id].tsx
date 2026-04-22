@@ -1,77 +1,141 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Text, ScrollView, Alert, Image } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, StyleSheet, Text, Alert, ActivityIndicator, Image } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
+import { apiFetch } from '@/utils/api';
+
+const STATUS_MAPPING = {
+    PENDING: 'Applied',
+    INTERVIEW: 'Interview',
+    ACCEPTED: 'Hired',
+    REJECTED: 'Rejected',
+    WITHDRAWN: 'Withdrawn'
+};
+
+const REVERSE_STATUS_MAPPING = {
+    Applied: 'PENDING',
+    Interview: 'INTERVIEW',
+    Hired: 'ACCEPTED',
+    Rejected: 'REJECTED'
+};
 
 export default function ApplicationDetailScreen() {
     const { id } = useLocalSearchParams();
-    const router = useRouter();
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'light'];
+    const [applicant, setApplicant] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const [status, setStatus] = useState('Applied');
 
-    // Mock applicant data
-    const applicant = {
-        id: id,
-        name: 'Sarah Jones',
-        rating: 4.8,
-        reviews: 24,
-        experience: '3 years',
-        bio: 'Professional cleaner with experience in deep cleaning and organizing. I am reliable, punctual, and use eco-friendly products.',
-        skills: ['Deep Cleaning', 'Laundry', 'Organization', 'Pet Friendly'],
-        availability: 'Weekdays, 9AM - 5PM'
+    const fetchApplicationDetails = useCallback(async () => {
+        try {
+            const appData = await apiFetch(`/jobs/applications/${id}`);
+            setStatus(STATUS_MAPPING[appData.status as keyof typeof STATUS_MAPPING] || appData.status);
+
+            // Fetch maid profile
+            const maidData = await apiFetch(`/profile/maid/${appData.maid.id}`);
+            setApplicant(maidData);
+        } catch (error) {
+            console.error('Failed to fetch application details:', error);
+            Alert.alert('Error', 'Failed to load application details');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [id]);
+
+    useEffect(() => {
+        fetchApplicationDetails();
+    }, [fetchApplicationDetails]);
+
+    const handleAction = async (newStatus: string) => {
+        const dbStatus = REVERSE_STATUS_MAPPING[newStatus as keyof typeof REVERSE_STATUS_MAPPING];
+        if (!dbStatus) return;
+
+        try {
+            await apiFetch(`/jobs/applications/${id}/status`, {
+                method: 'PUT',
+                body: JSON.stringify({ status: dbStatus })
+            });
+            setStatus(newStatus);
+            Alert.alert('Success', `Applicant marked as ${newStatus}`);
+        } catch (error) {
+            console.error('Failed to update status:', error);
+            Alert.alert('Error', 'Failed to update application status');
+        }
     };
 
-    const handleAction = (newStatus: string) => {
-        setStatus(newStatus);
-        Alert.alert('Success', `Applicant marked as ${newStatus}`);
-    };
+    if (isLoading) {
+        return (
+            <ScreenWrapper style={styles.container}>
+                <ActivityIndicator size="large" color={String(theme.primary || '#2563EB')} />
+            </ScreenWrapper>
+        );
+    }
+
+    if (!applicant) {
+        return (
+            <ScreenWrapper style={styles.container}>
+                <Text style={{ color: theme.textSecondary }}>Applicant not found</Text>
+            </ScreenWrapper>
+        );
+    }
 
     return (
         <ScreenWrapper scrollable style={styles.container}>
             <View style={styles.header}>
-                <View style={[styles.avatarContainer, { borderColor: theme.primary, backgroundColor: '#ccc' }]}>
-                    <Text style={styles.avatarText}>{applicant.name.charAt(0)}</Text>
+                <View style={[styles.avatarContainer, { borderColor: String(theme.primary || '#2563EB'), backgroundColor: '#ccc' }]}>
+                    <Text style={styles.avatarText}>{String(applicant.fullName || '?').charAt(0)}</Text>
                 </View>
-                <Text style={[styles.name, { color: theme.text }]}>{applicant.name}</Text>
+                <Text style={[styles.name, { color: theme.text }]}>{String(applicant.fullName || 'Unknown')}</Text>
                 <View style={styles.ratingContainer}>
                     <Ionicons name="star" size={16} color="#FFD700" />
-                    <Text style={[styles.rating, { color: theme.textSecondary }]}>{applicant.rating} ({applicant.reviews} reviews)</Text>
+                    <Text style={[styles.rating, { color: theme.textSecondary }]}>4.8 (24 reviews)</Text>
                 </View>
-                <View style={[styles.statusBadge, { backgroundColor: theme.primary + '20', marginTop: Spacing.sm }]}>
-                    <Text style={[styles.statusText, { color: theme.primary }]}>{status}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: String(theme.primary || '#2563EB') + '20', marginTop: Spacing.sm }]}>
+                    <Text style={[styles.statusText, { color: String(theme.primary || '#2563EB') }]}>{status}</Text>
                 </View>
             </View>
 
             <Card style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: theme.text }]}>About</Text>
-                <Text style={[styles.text, { color: theme.textSecondary }]}>{applicant.bio}</Text>
+                <Text style={[styles.text, { color: theme.textSecondary }]}>{String(applicant.description || 'No description provided')}</Text>
 
                 <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
                 <View style={styles.row}>
                     <Text style={[styles.label, { color: theme.text }]}>Experience</Text>
-                    <Text style={[styles.value, { color: theme.textSecondary }]}>{applicant.experience}</Text>
+                    <Text style={[styles.value, { color: theme.textSecondary }]}>{applicant.yearsExperience ? `${String(applicant.yearsExperience)} years` : 'Not specified'}</Text>
                 </View>
                 <View style={styles.row}>
                     <Text style={[styles.label, { color: theme.text }]}>Availability</Text>
-                    <Text style={[styles.value, { color: theme.textSecondary }]}>{applicant.availability}</Text>
+                    <Text style={[styles.value, { color: theme.textSecondary }]}>{String(applicant.availabilityType || 'Not specified')}</Text>
                 </View>
             </Card>
 
             <Card style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: theme.text }]}>Skills</Text>
-                <View style={styles.skillsContainer}>
-                    {applicant.skills.map((skill, index) => (
-                        <View key={index} style={[styles.skillBadge, { backgroundColor: theme.primary + '10' }]}>
-                            <Text style={[styles.skillText, { color: theme.primary }]}>{skill}</Text>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>Identification Documents</Text>
+                <View style={styles.documentsContainer}>
+                    {applicant.nidPhoto ? (
+                        <View style={styles.documentItem}>
+                            <Text style={[styles.documentLabel, { color: theme.text }]}>National ID</Text>
+                            <Image source={{ uri: applicant.nidPhoto }} style={styles.documentImage} resizeMode="contain" />
                         </View>
-                    ))}
+                    ) : (
+                        <Text style={[styles.noDocumentText, { color: theme.textSecondary }]}>No National ID uploaded</Text>
+                    )}
+                    {applicant.insurancePhoto ? (
+                        <View style={styles.documentItem}>
+                            <Text style={[styles.documentLabel, { color: theme.text }]}>Insurance Document</Text>
+                            <Image source={{ uri: applicant.insurancePhoto }} style={styles.documentImage} resizeMode="contain" />
+                        </View>
+                    ) : (
+                        <Text style={[styles.noDocumentText, { color: theme.textSecondary }]}>No Insurance document uploaded</Text>
+                    )}
                 </View>
             </Card>
 
@@ -185,6 +249,27 @@ const styles = StyleSheet.create({
     skillText: {
         fontSize: FontSize.sm,
         fontWeight: '500',
+    },
+    documentsContainer: {
+        gap: Spacing.md,
+    },
+    documentItem: {
+        marginBottom: Spacing.md,
+    },
+    documentLabel: {
+        fontSize: FontSize.md,
+        fontWeight: '600',
+        marginBottom: Spacing.sm,
+    },
+    documentImage: {
+        width: '100%',
+        height: 200,
+        borderRadius: BorderRadius.md,
+        backgroundColor: '#f5f5f5',
+    },
+    noDocumentText: {
+        fontSize: FontSize.md,
+        fontStyle: 'italic',
     },
     actions: {
         flexDirection: 'row',
