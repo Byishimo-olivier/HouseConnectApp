@@ -144,7 +144,14 @@ export default function EmployeeLayout() {
             headerTitle: 'Assistant',
           }}
         />
-        <Tabs.Screen name="jobs/new" options={{ href: null, title: 'Post Job' }} />
+        <Tabs.Screen
+          name="jobs/new"
+          options={{
+            href: null,
+            headerShown: false,
+            tabBarStyle: { display: 'none' },
+          }}
+        />
         <Tabs.Screen name="messages" options={{ href: null, headerRight: () => null }} />
         <Tabs.Screen name="disputes" options={{ href: null, title: 'My Disputes' }} />
         <Tabs.Screen name="activity-details" options={{ href: null, title: 'Activity Details' }} />

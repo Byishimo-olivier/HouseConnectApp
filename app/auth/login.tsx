@@ -40,7 +40,7 @@ export default function LoginScreen() {
             if (data.user.role === 'MAID') {
                 router.replace('/maid');
             } else if (data.user.role === 'ADMIN') {
-                router.replace('/admin/index');
+                router.replace('/admin');
             } else {
                 router.replace('/employee');
             }

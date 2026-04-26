@@ -25,6 +25,7 @@ export function Input({
 }: InputProps) {
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'light'];
+    const isMultiline = Boolean(props.multiline);
 
     return (
         <View style={[styles.container, containerStyle]}>
@@ -36,6 +37,8 @@ export function Input({
                     backgroundColor: theme.background === '#111827' ? '#1F2937' : '#FFFFFF', // Darker background for inputs
                     borderColor: error ? theme.danger : theme.border,
                 }
+                ,
+                isMultiline && styles.multilineContainer
             ]}>
                 {leftIcon && (
                     typeof leftIcon === 'string' ? (
@@ -54,6 +57,7 @@ export function Input({
                     style={[
                         styles.input,
                         { color: theme.text },
+                        isMultiline && styles.multilineInput,
                         style
                     ]}
                     placeholderTextColor={theme.textSecondary}
@@ -97,11 +101,24 @@ const styles = StyleSheet.create({
         height: 50,
         paddingHorizontal: Spacing.sm,
     },
+    multilineContainer: {
+        height: 'auto',
+        minHeight: 96,
+        alignItems: 'flex-start',
+        paddingVertical: Spacing.xs,
+    },
     input: {
         flex: 1,
         height: '100%',
         fontSize: FontSize.md,
         paddingHorizontal: Spacing.sm,
+    },
+    multilineInput: {
+        minHeight: 84,
+        height: 'auto',
+        textAlignVertical: 'top',
+        paddingTop: Spacing.sm,
+        paddingBottom: Spacing.sm,
     },
     leftIcon: {
         marginRight: Spacing.xs,

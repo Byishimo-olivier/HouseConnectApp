@@ -14,7 +14,11 @@ import { apiFetch } from '@/utils/api';
 
 const PROFILE_UNLOCK_PERCENTAGE = 0.1;
 const PROFILE_UNLOCK_CURRENCY = 'RWF';
-const DEFAULT_PAWAPAY_PROVIDER = (process.env.EXPO_PUBLIC_PAWAPAY_PROVIDER || 'MTN_MOMO_RWA').trim();
+const DEFAULT_PAYMENT_PROVIDER = (
+    process.env.EXPO_PUBLIC_PAYMENT_PROVIDER ||
+    process.env.EXPO_PUBLIC_PAWAPAY_PROVIDER ||
+    'MTN_MOMO_RWA'
+).trim();
 
 const toPositiveNumber = (value: unknown): number | null => {
     const parsed = Number(value);
@@ -36,6 +40,7 @@ export default function EmployerMaidProfileScreen() {
     const [loading, setLoading] = useState(true);
     const [isUnlocked, setIsUnlocked] = useState(false);
     const [isPaymentLoading, setIsPaymentLoading] = useState(false);
+    const [isAutoVerifying, setIsAutoVerifying] = useState(false);
     const [isAmountLoading, setIsAmountLoading] = useState(false);
     const [pendingTransactionRef, setPendingTransactionRef] = useState<string | null>(null);
     const [unlockAmount, setUnlockAmount] = useState<number | null>(null);
@@ -48,6 +53,25 @@ export default function EmployerMaidProfileScreen() {
         setPaymentPopupTitle(title);
         setPaymentPopupMessage(message);
         setPaymentPopupVisible(true);
+    }, []);
+
+    const getGatewayLabel = useCallback((gateway: string) => {
+        const value = String(gateway || '').trim().toLowerCase();
+        if (value === 'intouchpay') return 'IntouchPay';
+        if (value === 'paypack' || value === 'pawapay') return 'payment gateway';
+        return 'payment gateway';
+    }, []);
+
+    const isPendingVerificationError = useCallback((error: unknown) => {
+        const rawMessage = error instanceof Error
+            ? error.message
+            : String((error as any)?.message || error || '');
+        const message = rawMessage.toLowerCase();
+        return (
+            message.includes('pending confirmation')
+            || message.includes('still pending')
+            || message.includes('try again shortly')
+        );
     }, []);
 
     const resolveUnlockAmount = useCallback(async (maidData: any) => {
@@ -103,9 +127,8 @@ export default function EmployerMaidProfileScreen() {
         }
     }, [maidId, resolveUnlockAmount]);
 
-    const verifyProfileUnlock = async (transactionId: string) => {
+    const verifyProfileUnlock = useCallback(async (transactionId: string) => {
         try {
-            console.log('Verifying payment with transaction_id:', transactionId);
             await apiFetch('/payments/verify-unlock', {
                 method: 'POST',
                 body: JSON.stringify({
@@ -118,10 +141,12 @@ export default function EmployerMaidProfileScreen() {
             showPaymentPopup('Payment Confirmed', 'Contact information and documents are now unlocked.');
             await fetchMaidProfile();
         } catch (error: any) {
-            console.error('Payment Verification Error:', error);
+            if (!isPendingVerificationError(error)) {
+                console.error('Payment Verification Error:', error);
+            }
             throw error;
         }
-    };
+    }, [maidId, fetchMaidProfile, showPaymentPopup, isPendingVerificationError]);
 
     const startUnlockPayment = async () => {
         if (!maidId) {
@@ -146,11 +171,6 @@ export default function EmployerMaidProfileScreen() {
             Alert.alert('Missing Phone Number', 'Please add your phone number in profile before initiating payment.');
             return;
         }
-        if (!DEFAULT_PAWAPAY_PROVIDER) {
-            Alert.alert('Missing Provider', 'Set EXPO_PUBLIC_PAWAPAY_PROVIDER before initiating payment.');
-            return;
-        }
-
         setIsPaymentLoading(true);
         try {
             const deposit = await apiFetch('/payments/deposit', {
@@ -162,7 +182,7 @@ export default function EmployerMaidProfileScreen() {
                     fullName: profile.fullName,
                     phone: payerPhoneNumber,
                     phoneNumber: payerPhoneNumber,
-                    provider: DEFAULT_PAWAPAY_PROVIDER,
+                    provider: DEFAULT_PAYMENT_PROVIDER || undefined,
                     clientReferenceId: `UNLOCK-${maidId}-${Date.now()}`,
                     customerMessage: 'Unlock profile',
                     maidId
@@ -170,37 +190,25 @@ export default function EmployerMaidProfileScreen() {
             });
 
             const txRef = deposit?.tx_ref;
+            const gateway = String(deposit?.gateway || '').toLowerCase();
+            const gatewayLabel = getGatewayLabel(gateway);
+            const providerUsed = String(deposit?.providerUsed || DEFAULT_PAYMENT_PROVIDER || '').trim();
+            const phoneUsed = String(deposit?.phoneNumberUsed || payerPhoneNumber || '').trim();
             if (!txRef) {
                 throw new Error('Payment reference not returned by server');
             }
 
-            const transactionFound = deposit?.transactionFound !== false;
-            if (!transactionFound) {
-                setPendingTransactionRef(null);
-                showPaymentPopup(
-                    'Payment Pending Registration',
-                    `PayPack received your request but has not registered a transaction yet.\n\nNumber: ${String(deposit?.phoneNumberUsed || payerPhoneNumber || '').trim()}\nProvider: ${String(deposit?.providerUsed || DEFAULT_PAWAPAY_PROVIDER || '').trim()}\n\nTry again in a few seconds. If this repeats, your number may not be approved on PayPack.`
-                );
-                return;
-            }
-
             setPendingTransactionRef(txRef);
-            const providerUsed = String(deposit?.providerUsed || DEFAULT_PAWAPAY_PROVIDER || '').trim();
-            const phoneUsed = String(deposit?.phoneNumberUsed || payerPhoneNumber || '').trim();
             const sandboxMode = Boolean(deposit?.sandbox);
-            const gateway = String(deposit?.gateway || '').toLowerCase();
-            const paypackWebhookMode = String(deposit?.paypackWebhookMode || '').toLowerCase();
-            const momoPromptLikely = Boolean(deposit?.momoPromptLikely);
             const approvalText = sandboxMode
                 ? 'Sandbox mode: real MoMo approval popup is not sent to the phone. Use Verify Payment to continue testing.'
-                : gateway === 'paypack'
-                    ? momoPromptLikely
-                        ? 'Payment request submitted. If your number is approved on PayPack, a MoMo prompt should arrive shortly. Approve it with your PIN, then tap "Verify Payment".'
-                        : `Payment request submitted to PayPack (${paypackWebhookMode || 'development'} mode). Phone popup might not arrive unless your number is approved for this PayPack app.`
-                    : 'Payment request submitted. A MoMo prompt should arrive shortly if your network/provider accepts it.';
+                : gateway === 'intouchpay'
+                    ? 'Payment request sent to IntouchPay. Confirm on your mobile money account. Unlock will happen automatically after successful payment.'
+                    : `Payment request sent to ${gatewayLabel}. Unlock will happen automatically after successful payment.`;
+            const providerLine = providerUsed ? `\nProvider: ${providerUsed}` : '';
             showPaymentPopup(
                 'Payment Initiated',
-                `${approvalText}\n\nNumber: ${phoneUsed}\nProvider: ${providerUsed}\nReference: ${txRef}`
+                `${approvalText}\n\nNumber: ${phoneUsed}${providerLine}\nReference: ${txRef}`
             );
         } catch (error: any) {
             console.error('Payment initiation failed:', error);
@@ -210,7 +218,7 @@ export default function EmployerMaidProfileScreen() {
         }
     };
 
-    const handleVerifyPayment = async () => {
+    const handleVerifyPayment = useCallback(async () => {
         if (!pendingTransactionRef) {
             Alert.alert('No Pending Payment', 'Start a payment first, then verify it.');
             return;
@@ -220,18 +228,75 @@ export default function EmployerMaidProfileScreen() {
         try {
             await verifyProfileUnlock(pendingTransactionRef);
         } catch (error: any) {
+            const pending = isPendingVerificationError(error);
             showPaymentPopup(
-                'Verification Pending',
-                error?.message || 'We could not confirm the payment yet. Wait a moment and try again.'
+                pending ? 'Verification Pending' : 'Verification Failed',
+                error?.message || (pending
+                    ? 'We could not confirm the payment yet. Wait a moment and try again.'
+                    : 'Payment verification failed. Please try again.')
             );
         } finally {
             setIsPaymentLoading(false);
         }
-    };
+    }, [pendingTransactionRef, verifyProfileUnlock, showPaymentPopup, isPendingVerificationError]);
 
     useEffect(() => {
         fetchMaidProfile();
     }, [fetchMaidProfile]);
+
+    useEffect(() => {
+        if (!pendingTransactionRef || isUnlocked) return;
+
+        let stopped = false;
+        let timeoutId: ReturnType<typeof setTimeout> | null = null;
+        let attempts = 0;
+        const maxAttempts = 20;
+
+        const run = async () => {
+            if (stopped) return;
+            if (attempts >= maxAttempts) {
+                setIsAutoVerifying(false);
+                showPaymentPopup(
+                    'Verification Pending',
+                    'Payment confirmation is taking longer than expected. Complete the MoMo approval, then tap "I have paid, verify payment".'
+                );
+                return;
+            }
+            attempts += 1;
+
+            try {
+                setIsAutoVerifying(true);
+                await verifyProfileUnlock(pendingTransactionRef);
+                stopped = true;
+                setIsAutoVerifying(false);
+            } catch (error: any) {
+                if (isPendingVerificationError(error)) {
+                    timeoutId = setTimeout(run, 5000);
+                    return;
+                }
+                stopped = true;
+                setIsAutoVerifying(false);
+                showPaymentPopup(
+                    'Verification Failed',
+                    error?.message || 'Payment verification failed. Please try again.'
+                );
+            } finally {
+                if (stopped) {
+                    setIsAutoVerifying(false);
+                }
+            }
+        };
+
+        run();
+
+        return () => {
+            stopped = true;
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
+            setIsAutoVerifying(false);
+        };
+    }, [pendingTransactionRef, isUnlocked, verifyProfileUnlock, isPendingVerificationError, showPaymentPopup]);
 
     if (loading && !isUnlocked) return <ScreenWrapper style={styles.centered}><ActivityIndicator size="large" color={theme.primary} /></ScreenWrapper>;
     if (!maid) return <ScreenWrapper style={styles.centered}><Text>Maid not found.</Text></ScreenWrapper>;
@@ -301,7 +366,9 @@ export default function EmployerMaidProfileScreen() {
                                     disabled={isPaymentLoading}
                                 >
                                     <Ionicons name="refresh-outline" size={16} color={theme.primary} />
-                                    <Text style={[styles.verifyText, { color: theme.primary }]}>I have paid, verify payment</Text>
+                                    <Text style={[styles.verifyText, { color: theme.primary }]}>
+                                        {isAutoVerifying ? 'Auto-verifying payment...' : 'I have paid, verify payment'}
+                                    </Text>
                                 </TouchableOpacity>
                             )}
                         </View>
@@ -391,7 +458,7 @@ export default function EmployerMaidProfileScreen() {
                                     title="Verify Payment"
                                     variant="outline"
                                     onPress={handleVerifyPayment}
-                                    disabled={isPaymentLoading}
+                                    disabled={isPaymentLoading || isAutoVerifying}
                                     style={styles.fullWidthButton}
                                 />
                             )}

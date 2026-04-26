@@ -44,7 +44,7 @@ function RootLayoutNav() {
         router.replace('/employee');
       }
     }
-  }, [profile, isLoading, segments]);
+  }, [profile, isLoading, segments, router]);
 
   return (
     <NavigationThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
@@ -53,7 +53,7 @@ function RootLayoutNav() {
         <Stack.Screen name="auth" options={{ headerShown: false }} />
         <Stack.Screen name="employee" options={{ headerShown: false }} />
         <Stack.Screen name="maid" options={{ headerShown: false }} />
-        <Stack.Screen name="admin" options={{ headerShown: false }} />
+        <Stack.Screen name="admin/index" options={{ headerShown: false }} />
         <Stack.Screen name="personal-info" options={{ title: 'Edit Profile', headerBackTitle: 'Back' }} />
         <Stack.Screen name="message" options={{ title: 'Message' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
