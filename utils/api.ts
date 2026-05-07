@@ -4,9 +4,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     const token = await AsyncStorage.getItem('userToken');
+    const isAuthRoute = endpoint.includes('/auth/');
 
     // Early exit if no token and not an auth route to prevent noisy log errors during logout
-    if (!token && !endpoint.includes('/auth/')) {
+    if (!token && !isAuthRoute) {
         return Promise.reject(new Error('AUTHENTICATION_REQUIRED'));
     }
 
@@ -37,6 +38,18 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        const rawMessage = (errorData?.message || '').toString();
+        const normalizedMessage = rawMessage.toLowerCase();
+        const isTokenErrorMessage =
+            normalizedMessage.includes('invalid or expired token') ||
+            normalizedMessage.includes('access token required') ||
+            normalizedMessage.includes('jwt expired');
+
+        // Standardize expired/invalid session errors for non-auth endpoints.
+        if (!isAuthRoute && (response.status === 401 || isTokenErrorMessage)) {
+            throw new Error('AUTHENTICATION_REQUIRED');
+        }
+
         const message = errorData?.debug
             ? `${errorData.message || 'Something went wrong'}: ${errorData.debug}`
             : (errorData?.message || 'Something went wrong');

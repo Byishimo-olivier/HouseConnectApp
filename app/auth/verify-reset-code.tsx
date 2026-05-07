@@ -13,23 +13,50 @@ export default function VerifyResetCodeScreen() {
     const [loading, setLoading] = useState(false);
 
     const handleVerifyPin = async () => {
-        if (!pin || pin.length !== 6) {
+        const rawEmail = Array.isArray(email) ? email[0] : email;
+        const normalizedEmail = rawEmail?.toString().trim().toLowerCase();
+        const normalizedPin = pin.replace(/\D/g, '');
+
+        console.log('[Verify Reset PIN] Attempting verification:', {
+            receivedEmail: rawEmail,
+            normalizedEmail,
+            pinLength: normalizedPin.length,
+        });
+
+        if (!normalizedEmail) {
+            console.error('[Verify Reset PIN] Email is missing');
+            Alert.alert('Error', 'Email is missing. Please start again.');
+            router.replace('/auth/forgot-password');
+            return;
+        }
+
+        if (!normalizedPin || normalizedPin.length !== 6) {
             Alert.alert('Error', 'Please enter a valid 6-digit PIN');
             return;
         }
 
         setLoading(true);
         try {
+            console.log('[Verify Reset PIN] Sending verification request...');
             await apiFetch('/auth/verify-reset-pin', {
                 method: 'POST',
-                body: JSON.stringify({ email, pin }),
+                body: JSON.stringify({ email: normalizedEmail, pin: normalizedPin }),
             });
 
+            console.log('[Verify Reset PIN] PIN verified successfully, navigating to new-password');
+            // Ensure params are properly encoded as strings
             router.push({
                 pathname: '/auth/new-password',
-                params: { email, pin }
+                params: {
+                    email: String(normalizedEmail),
+                    pin: String(normalizedPin),
+                }
             });
         } catch (error: any) {
+            console.error('[Verify Reset PIN] Verification failed:', {
+                message: error.message,
+                error: error.toString(),
+            });
             Alert.alert('Verification Failed', error.message || 'The PIN you entered is invalid or expired.');
         } finally {
             setLoading(false);
@@ -53,7 +80,7 @@ export default function VerifyResetCodeScreen() {
                                 placeholder="123456"
                                 placeholderTextColor="#ccc"
                                 value={pin}
-                                onChangeText={setPin}
+                                onChangeText={(value) => setPin(value.replace(/\D/g, ''))}
                                 keyboardType="number-pad"
                                 maxLength={6}
                                 autoFocus

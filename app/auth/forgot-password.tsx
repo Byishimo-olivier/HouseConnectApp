@@ -12,7 +12,9 @@ export default function ForgotPasswordScreen() {
     const [loading, setLoading] = useState(false);
 
     const handleResetRequest = async () => {
-        if (!email) {
+        const normalizedEmail = email.trim().toLowerCase();
+
+        if (!normalizedEmail) {
             Alert.alert('Error', 'Please enter your email address');
             return;
         }
@@ -22,12 +24,12 @@ export default function ForgotPasswordScreen() {
         try {
             await apiFetch('/auth/forgot-password', {
                 method: 'POST',
-                body: JSON.stringify({ email }),
+                body: JSON.stringify({ email: normalizedEmail }),
             });
 
             router.push({
                 pathname: '/auth/verify-reset-code',
-                params: { email }
+                params: { email: normalizedEmail }
             });
         } catch (error: any) {
             Alert.alert('Error', error.message || 'Failed to process request. Please try again later.');

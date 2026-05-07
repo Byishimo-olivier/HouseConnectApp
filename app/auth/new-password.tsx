@@ -14,6 +14,34 @@ export default function NewPasswordScreen() {
     const [loading, setLoading] = useState(false);
 
     const handleResetPassword = async () => {
+        // Extract and normalize params - handle array format from router
+        const rawEmail = Array.isArray(email) ? email[0] : email;
+        const rawPin = Array.isArray(pin) ? pin[0] : pin;
+        
+        const normalizedEmail = rawEmail?.toString().trim().toLowerCase();
+        const normalizedPin = rawPin?.toString().replace(/\D/g, '');
+
+        console.log('[Password Reset] Starting reset with:', {
+            receivedEmail: rawEmail,
+            receivedPin: rawPin,
+            normalizedEmail,
+            normalizedPin: normalizedPin?.substring(0, 3) + '***', // Log first 3 digits only
+        });
+
+        if (!normalizedEmail || !normalizedPin) {
+            console.error('[Password Reset] Missing email or pin:', { normalizedEmail, normalizedPin });
+            Alert.alert('Error', 'Reset session is missing. Please request a new PIN.');
+            router.replace('/auth/forgot-password');
+            return;
+        }
+
+        if (normalizedPin.length !== 6) {
+            console.error('[Password Reset] PIN length invalid:', normalizedPin.length);
+            Alert.alert('Error', 'Reset PIN is invalid. Please verify your PIN again.');
+            router.replace({ pathname: '/auth/verify-reset-code', params: { email: normalizedEmail } });
+            return;
+        }
+
         if (!newPassword || !confirmPassword) {
             Alert.alert('Error', 'Please fill in all fields');
             return;
@@ -31,17 +59,27 @@ export default function NewPasswordScreen() {
 
         setLoading(true);
         try {
-            await apiFetch('/auth/reset-password', {
+            console.log('[Password Reset] Sending request to backend...');
+            const response = await apiFetch('/auth/reset-password', {
                 method: 'POST',
-                body: JSON.stringify({ email, token: pin, newPassword }),
+                body: JSON.stringify({
+                    email: normalizedEmail,
+                    token: normalizedPin,
+                    newPassword,
+                }),
             });
 
+            console.log('[Password Reset] Success response:', response);
             Alert.alert(
                 'Success',
                 'Your password has been successfully reset.',
                 [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
             );
         } catch (error: any) {
+            console.error('[Password Reset] Error occurred:', {
+                message: error.message,
+                error: error.toString(),
+            });
             Alert.alert('Reset Failed', error.message || 'Failed to reset password. Please try again.');
         } finally {
             setLoading(false);

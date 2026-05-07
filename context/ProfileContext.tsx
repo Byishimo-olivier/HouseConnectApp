@@ -129,11 +129,16 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
             refreshUnreadCount();
             refreshUnreadChatCount();
         } catch (error: any) {
-            console.error('Refresh Profile Error:', error);
-            if (error?.message === 'Invalid or expired token' || error?.message === 'Access token required') {
+            if (
+                error?.message === 'AUTHENTICATION_REQUIRED' ||
+                error?.message === 'Invalid or expired token' ||
+                error?.message === 'Access token required'
+            ) {
                 console.log('Session invalid. Logging out...');
-                logout();
+                await logout();
+                return;
             }
+            console.error('Refresh Profile Error:', error);
         } finally {
             setIsLoading(false);
         }

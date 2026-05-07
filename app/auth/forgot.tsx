@@ -17,18 +17,20 @@ export default function ForgotPasswordScreen() {
     const [loading, setLoading] = useState(false);
 
     const handleRequestToken = async () => {
-        if (!email) {
+        const normalizedEmail = email.trim().toLowerCase();
+        if (!normalizedEmail) {
             Alert.alert('Error', 'Please enter your email address');
             return;
         }
 
         setLoading(true);
         try {
-            const data = await apiFetch('/auth/forgot-password', {
+            await apiFetch('/auth/forgot-password', {
                 method: 'POST',
-                body: JSON.stringify({ email }),
+                body: JSON.stringify({ email: normalizedEmail }),
             });
             Alert.alert('PIN Sent', 'If an account exists, a 6-digit PIN has been sent. Check your backend console (Mock Email).');
+            setEmail(normalizedEmail);
             setStep(2);
         } catch (error: any) {
             Alert.alert('Error', error.message || 'Failed to process request');
@@ -38,8 +40,16 @@ export default function ForgotPasswordScreen() {
     };
 
     const handleResetPassword = async () => {
-        if (!token || !newPassword || !confirmPassword) {
+        const normalizedEmail = email.trim().toLowerCase();
+        const normalizedToken = token.replace(/\D/g, '');
+
+        if (!normalizedEmail || !normalizedToken || !newPassword || !confirmPassword) {
             Alert.alert('Error', 'Please fill in all fields');
+            return;
+        }
+
+        if (normalizedToken.length !== 6) {
+            Alert.alert('Error', 'Please enter a valid 6-digit PIN');
             return;
         }
 
@@ -55,9 +65,15 @@ export default function ForgotPasswordScreen() {
 
         setLoading(true);
         try {
-            const data = await apiFetch('/auth/reset-password', {
+            await apiFetch('/auth/reset-password', {
                 method: 'POST',
-                body: JSON.stringify({ email, token, newPassword }),
+                body: JSON.stringify({
+                    email: normalizedEmail,
+                    token: normalizedToken,
+                    pin: normalizedToken,
+                    newPassword,
+                    password: newPassword,
+                }),
             });
             Alert.alert('Success', 'Your password has been reset successfully.', [
                 { text: 'Login Now', onPress: () => router.replace('/auth/login') }
@@ -105,13 +121,13 @@ export default function ForgotPasswordScreen() {
                                 <Text style={styles.label}>Reset PIN (6 digits)</Text>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="123456"
-                                    placeholderTextColor="#ccc"
-                                    value={token}
-                                    onChangeText={setToken}
-                                    keyboardType="number-pad"
-                                    maxLength={6}
-                                />
+                                placeholder="123456"
+                                placeholderTextColor="#ccc"
+                                value={token}
+                                onChangeText={(value) => setToken(value.replace(/\D/g, ''))}
+                                keyboardType="number-pad"
+                                maxLength={6}
+                            />
                             </View>
                             <View style={styles.inputContainer}>
                                 <Text style={styles.label}>New Password</Text>
@@ -150,7 +166,7 @@ export default function ForgotPasswordScreen() {
 
                     {step === 2 && (
                         <TouchableOpacity style={styles.resendBtn} onPress={() => setStep(1)}>
-                            <Text style={styles.resendText}>Didn't get a PIN? Request again</Text>
+                            <Text style={styles.resendText}>Didn&apos;t get a PIN? Request again</Text>
                         </TouchableOpacity>
                     )}
                 </View>
